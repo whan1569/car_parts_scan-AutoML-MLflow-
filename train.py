@@ -1,5 +1,6 @@
 import os
 from ultralytics import YOLO
+from cutoff import EarlyStopping
 
 # 데이터셋 경로, 하이퍼파라미터 등 configs에서 불러오기
 from configs import get_config
@@ -17,6 +18,9 @@ def train_and_evaluate(config: dict, return_metrics: bool = False) -> tuple:
     """
     # YOLO 모델 초기화
     model = YOLO(config['model_path'])
+    
+    # Early Stopping 초기화
+    early_stopping = EarlyStopping(**config['early_stopping'])
     
     # 데이터셋 로드 (불필요, 삭제)
     # dataset = model.load_dataset(config['data_path'])
@@ -65,8 +69,15 @@ def train_and_evaluate(config: dict, return_metrics: bool = False) -> tuple:
             'recall': results.results_dict.get('metrics/recall(B)', 0.0),
             'box_loss': results.results_dict.get('train/box_loss', 0.0),
             'cls_loss': results.results_dict.get('train/cls_loss', 0.0),
-            'dfl_loss': results.results_dict.get('train/dfl_loss', 0.0)
+            'dfl_loss': results.results_dict.get('train/dfl_loss', 0.0),
+            'val_box_loss': results.results_dict.get('val/box_loss', 0.0),
+            'val_cls_loss': results.results_dict.get('val/cls_loss', 0.0)
         }
+        
+        # Early Stopping 체크
+        if early_stopping.check_epoch(metrics):
+            print("Early stopping triggered")
+        
         return metrics, best_ckpt
     
     return best_ckpt
